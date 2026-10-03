@@ -13,15 +13,14 @@ import Footer from './components/Footer';
 
 export default function Home() {
   const [language, setLanguage] = useState('en');
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('cropshield-theme') || 'dark';
+    }
+    return 'dark';
+  });
   const [modalOpen, setModalOpen] = useState(false);
   const [escalatedDisease, setEscalatedDisease] = useState(null);
-
-  // Load saved theme on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('cropshield-theme');
-    if (saved) setTheme(saved);
-  }, []);
 
   // Apply theme to DOM and persist
   useEffect(() => {

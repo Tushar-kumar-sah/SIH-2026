@@ -40,6 +40,27 @@ export default function DiagnosisStudio({ language = 'en', onEscalate }) {
     }, 2200);
   }, []);
 
+  // Compress image for faster AI processing
+  const compressImage = useCallback((dataUrl, maxWidth = 800, quality = 0.7) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = dataUrl;
+    });
+  }, []);
+
   // ====== GEMINI AI POWERED — Fully Automatic Detection ======
   const handleFileUpload = useCallback((file) => {
     if (!file || !file.type.startsWith('image/')) return;
@@ -53,11 +74,14 @@ export default function DiagnosisStudio({ language = 'en', onEscalate }) {
       setActiveTab('biological');
 
       try {
-        // Send image to Gemini via our API route
+        // Compress image before sending to AI (800px max, JPEG 70% quality)
+        const compressedImage = await compressImage(imageUrl);
+
+        // Send compressed image to Gemini via our API route
         const res = await fetch('/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: imageUrl }),
+          body: JSON.stringify({ image: compressedImage }),
         });
 
         const data = await res.json();
@@ -98,9 +122,9 @@ export default function DiagnosisStudio({ language = 'en', onEscalate }) {
               ],
             },
             voiceAdvisory: {
-              en: 'No crop detected in the uploaded image. Please upload a clear photo of a crop leaf or plant for disease diagnosis.',
-              hi: 'अपलोड की गई छवि में कोई फसल नहीं पाई गई। कृपया रोग निदान के लिए फसल की पत्ती या पौधे की स्पष्ट तस्वीर अपलोड करें।',
-              mr: 'अपलोड केलेल्या प्रतिमेत कोणतेही पीक आढळले नाही. कृपया रोग निदानासाठी पिकाच्या पानाचा किंवा रोपाचा स्पष्ट फोटो अपलोड करा.',
+              en: ai.voiceAdvisory?.en || 'No crop detected in the uploaded image. Please upload a clear photo of a crop leaf or plant for disease diagnosis.',
+              hi: ai.voiceAdvisory?.hi || 'अपलोड की गई छवि में कोई फसल नहीं पाई गई। कृपया रोग निदान के लिए फसल की पत्ती या पौधे की स्पष्ट तस्वीर अपलोड करें।',
+              mr: ai.voiceAdvisory?.mr || 'अपलोड केलेल्या प्रतिमेत कोणतेही पीक आढळले नाही. कृपया रोग निदानासाठी पिकाच्या पानाचा किंवा रोपाचा स्पष्ट फोटो अपलोड करा.',
             },
           });
           return;
@@ -130,9 +154,9 @@ export default function DiagnosisStudio({ language = 'en', onEscalate }) {
             cultural: ai.precautions?.cultural || uploadDiseaseResult.ipm.cultural,
           },
           voiceAdvisory: {
-            en: ai.voiceAdvisory || '',
-            hi: ai.voiceAdvisory || '',
-            mr: ai.voiceAdvisory || '',
+            en: ai.voiceAdvisory?.en || ai.voiceAdvisory || '',
+            hi: ai.voiceAdvisory?.hi || '',
+            mr: ai.voiceAdvisory?.mr || '',
           },
         };
 
@@ -147,7 +171,7 @@ export default function DiagnosisStudio({ language = 'en', onEscalate }) {
       }
     };
     reader.readAsDataURL(file);
-  }, []);
+  }, [compressImage]);
 
 
   const handleDrop = useCallback((e) => {
@@ -562,14 +586,14 @@ export default function DiagnosisStudio({ language = 'en', onEscalate }) {
                     </div>
                     {speaking && (
                       <div className="flex items-center gap-0.5">
-                        {[1,2,3,4,5].map((i) => (
+                        {[12, 18, 10, 16, 14].map((h, i) => (
                           <div
                             key={i}
                             className="w-0.5 bg-health rounded-full animate-pulse"
                             style={{
-                              height: `${8 + Math.random() * 14}px`,
+                              height: `${h}px`,
                               animationDelay: `${i * 0.1}s`,
-                              animationDuration: `${0.3 + Math.random() * 0.4}s`,
+                              animationDuration: `${0.3 + (i % 3) * 0.15}s`,
                             }}
                           />
                         ))}
